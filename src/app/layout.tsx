@@ -7,12 +7,12 @@ import QueryProvider from "@/providers/query-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 
 const sans = Manrope({
-  variable: "--font-geist-sans",
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
 const mono = JetBrains_Mono({
-  variable: "--font-geist-mono",
+  variable: "--font-mono",
   subsets: ["latin"],
 });
 
@@ -30,7 +30,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body
-          className={`${sans.variable} ${mono.variable} antialiased`}
+          className={`${sans.variable} ${mono.variable} font-sans antialiased`}
         >
           <QueryProvider>
             <ThemeProvider
