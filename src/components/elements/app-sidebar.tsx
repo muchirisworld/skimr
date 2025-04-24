@@ -9,7 +9,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { UploadIcon, GearIcon } from "@radix-ui/react-icons";
+import { CameraIcon, GearIcon } from "@radix-ui/react-icons";
 import { FolderOpenIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import UserButton from "./user-button";
@@ -17,23 +17,23 @@ import UserButton from "./user-button";
 
 const items = [
     {
-        name: "Upload",
-        href: "/",
-        icon: UploadIcon,
+        name: "Explore",
+        href: "/dashboard",
+        icon: CameraIcon,
     },
     {
         name: "Search",
-        href: "/search",
+        href: "/dashboard/search",
         icon: MagnifyingGlassIcon,
     },
     {
         name: "Collections",
-        href: "/collections",
+        href: "/dashboard/collections",
         icon: FolderOpenIcon,
     },
     {
         name: "Settings",
-        href: "/settings",
+        href: "/dashboard/settings",
         icon: GearIcon,
     },
   ];
