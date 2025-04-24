@@ -3,7 +3,7 @@ import {
     SidebarProvider,
     SidebarTrigger
 } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/elements/app-sidebar";
+import AppSidebar from "@/components/elements/app-sidebar";
 
 const DashboardLayout = ({
     children,

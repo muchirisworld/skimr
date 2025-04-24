@@ -1,3 +1,5 @@
+"use client";
+
 import {
     Sidebar,
     SidebarContent,
@@ -13,6 +15,7 @@ import { CameraIcon, GearIcon } from "@radix-ui/react-icons";
 import { FolderOpenIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import UserButton from "./user-button";
+import { usePathname } from "next/navigation";
 
 
 const items = [
@@ -38,7 +41,8 @@ const items = [
     },
   ];
 
-export function AppSidebar() {
+const AppSidebar = () => {
+    const pathname = usePathname();
   return (
     <Sidebar>
         <SidebarContent>
@@ -48,11 +52,11 @@ export function AppSidebar() {
                     <SidebarMenu>
                         {items.map((item) => (
                         <SidebarMenuItem key={item.name}>
-                            <SidebarMenuButton asChild>
-                            <Link href={item.href}>
-                                <item.icon />
-                                <span>{item.name}</span>
-                            </Link>
+                            <SidebarMenuButton asChild isActive={pathname == item.href}>
+                                <Link href={item.href}>
+                                    <item.icon />
+                                    <span>{item.name}</span>
+                                </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         ))}
@@ -70,3 +74,5 @@ export function AppSidebar() {
     </Sidebar>
   )
 }
+
+export default AppSidebar;
