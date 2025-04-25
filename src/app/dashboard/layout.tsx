@@ -1,9 +1,9 @@
 import React from 'react';
 import {
-    SidebarProvider,
-    SidebarTrigger
+    SidebarProvider
 } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/elements/app-sidebar";
+import Header from './_components/header';
 
 const DashboardLayout = ({
     children,
@@ -14,7 +14,7 @@ const DashboardLayout = ({
     <SidebarProvider>
         <AppSidebar />
         <main>
-            <SidebarTrigger />
+            <Header />
             {children}
         </main>
     </SidebarProvider>

@@ -39,7 +39,7 @@ const items = [
         href: "/dashboard/settings",
         icon: GearIcon,
     },
-  ];
+];
 
 const AppSidebar = () => {
     const pathname = usePathname();
