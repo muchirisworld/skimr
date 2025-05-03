@@ -14,21 +14,21 @@ const ContentLayout: React.FC<ContentLayoutProps> = ({
     children
 }) => {
     return (
-        <div className="flex flex-col h-full w-full">
-            <div className="flex justify-between px-6 py-4 border-b border-muted">
-                <div className="flex flex-col">
-                    <h1 className="text-2xl font-semibold">{title}</h1>
+        <div className="flex flex-col h-full w-full min-w-0">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-4 px-6 py-4 border-b border-muted">
+                <div className="flex flex-col min-w-0">
+                    <h1 className="text-2xl font-semibold truncate">{title}</h1>
                     {subtitle && (
                         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
                     )}
                 </div>
                 {headerAction && (
-                    <div className="ml-4">
+                    <div className="flex-shrink-0">
                         {headerAction}
                     </div>
                 )}
             </div>
-            <div className="flex-1 p-6">
+            <div className="flex-1 p-6 min-w-0 overflow-auto">
                 {children}
             </div>
         </div>
