@@ -59,6 +59,7 @@
     "react-day-picker": "8.10.1",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.56.1",
+    "react-masonry-css": "^1.0.16",
     "react-resizable-panels": "^2.1.8",
     "recharts": "^2.15.3",
     "skimr": "link:",
