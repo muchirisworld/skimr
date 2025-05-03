@@ -9,6 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.799.0",
+    "@aws-sdk/client-s3": "^3.802.0",
+    "@aws-sdk/s3-request-presigner": "^3.802.0",
     "@clerk/nextjs": "^6.18.0",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.1",

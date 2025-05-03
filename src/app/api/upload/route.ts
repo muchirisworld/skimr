@@ -1,9 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUser } from "@clerk/nextjs/server";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { createPost } from "@/app/actions/post";
+
+const s3Client = new S3Client({
+    region: process.env.AWS_S3_REGION!,
+    credentials: {
+        accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY!,
+    },
+});
+
+const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME!;
 
 export async function POST(req: NextRequest) {
     try {
+        const user = await currentUser();
+        
+        if (!user?.id) {
+            return NextResponse.json(
+                { error: "Unauthorized" },
+                { status: 401 }
+            );
+        }
+
         const formData = await req.formData();
         const files = formData.getAll('files') as File[];
+        const title = formData.get('title') as string;
+        const description = formData.get('description') as string;
 
         if (files.length === 0) {
             return NextResponse.json(
@@ -15,16 +40,40 @@ export async function POST(req: NextRequest) {
         // Process each file
         const uploadedFiles = await Promise.all(
             files.map(async (file) => {
-                // Here you would typically:
-                // 1. Validate the file (type, size, etc.)
-                // 2. Upload to your storage service (S3, etc.)
-                // 3. Save metadata to your database
-                
-                // For now, we'll just return the file info
+                const fileBuffer = await file.arrayBuffer();
+                const key = `${user.id}/${Date.now()}-${file.name}`;
+
+                const command = new PutObjectCommand({
+                    Bucket: BUCKET_NAME,
+                    Key: key,
+                    Body: Buffer.from(fileBuffer),
+                    ContentType: file.type,
+                });
+
+                await s3Client.send(command);
+
+                // Generate a signed URL for the uploaded file
+                const signedUrl = await getSignedUrl(s3Client, command, {
+                    expiresIn: 3600, // URL expires in 1 hour
+                });
+
+                // Create post with tags
+                const { post, tags } = await createPost({
+                    userId: user.id,
+                    title: title || file.name,
+                    description,
+                    imageUrl: signedUrl,
+                    s3Key: key,
+                });
+
                 return {
                     name: file.name,
                     type: file.type,
-                    size: file.size
+                    size: file.size,
+                    url: signedUrl,
+                    key: key,
+                    post,
+                    tags,
                 };
             })
         );

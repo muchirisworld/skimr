@@ -15,9 +15,14 @@ import { useFileUpload } from "@/hooks/use-file-upload";
 import { UploadIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 const UploadModal = () => {
     const [open, setOpen] = useState(false);
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
     const maxSizeMB = 5;
     const maxSize = maxSizeMB * 1024 * 1024; // 5MB default
     const maxFiles = 6;
@@ -43,6 +48,13 @@ const UploadModal = () => {
                 }
             });
 
+            if (title) {
+                formData.append('title', title);
+            }
+            if (description) {
+                formData.append('description', description);
+            }
+
             const response = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData
@@ -53,8 +65,10 @@ const UploadModal = () => {
             }
 
             const data = await response.json();
-            toast.success(JSON.stringify(data));
+            toast.success("Images uploaded successfully!");
             actions.clearFiles();
+            setTitle("");
+            setDescription("");
             setOpen(false);
         } catch (error) {
             console.error('Upload error:', error);
@@ -64,7 +78,7 @@ const UploadModal = () => {
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger>
+            <DialogTrigger asChild>
                 <Button
                     variant={"outline"}
                 >
@@ -79,12 +93,32 @@ const UploadModal = () => {
                         Select the images you want to upload. Maximum {maxFiles} files, up to {maxSizeMB}MB each.
                     </DialogDescription>
                 </DialogHeader>
-                <ImageHandler 
-                    state={state} 
-                    actions={actions}
-                    maxSizeMB={maxSizeMB}
-                    maxFiles={maxFiles}
-                />
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="title">Title</Label>
+                        <Input
+                            id="title"
+                            placeholder="Enter a title for your images"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                            id="description"
+                            placeholder="Enter a description (optional)"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                        />
+                    </div>
+                    <ImageHandler 
+                        state={state} 
+                        actions={actions}
+                        maxSizeMB={maxSizeMB}
+                        maxFiles={maxFiles}
+                    />
+                </div>
                 <DialogFooter>
                     <div className="flex items-center gap-2">
                         <Button
