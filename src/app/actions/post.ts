@@ -28,49 +28,62 @@ export const createPost = async (input: CreatePostInput) => {
                     .returning();
 
                 if (detectedLabels.length > 0) {
-                    // Create or get existing tags
-                    const tags = await Promise.all(
-                        detectedLabels.map(async (label) => {
-                            const [existingTag] = await tx.select()
-                                .from(tag)
-                                .where(eq(tag.name, label.name))
-                                .limit(1);
+                    // First, get all existing tags in a single query
+                    const existingTags = await tx.select()
+                        .from(tag)
+                        .where(eq(tag.name, detectedLabels.map(l => l.name)));
 
-                            if (existingTag) {
-                                return {
-                                    tag: existingTag,
-                                    confidence: label.confidence,
-                                };
-                            }
-
-                            const [newTag] = await tx.insert(tag)
-                                .values({ name: label.name })
-                                .returning();
-
-                            return {
-                                tag: newTag,
-                                confidence: label.confidence,
-                            };
-                        })
+                    const existingTagMap = new Map(
+                        existingTags.map(t => [t.name, t])
                     );
+
+                    // Create tags that don't exist yet
+                    const newTags = await Promise.all(
+                        detectedLabels
+                            .filter(label => !existingTagMap.has(label.name))
+                            .map(async (label) => {
+                                try {
+                                    const [newTag] = await tx.insert(tag)
+                                        .values({ name: label.name })
+                                        .returning();
+                                    return newTag;
+                                } catch (error) {
+                                    // If creation fails, try to get the tag again
+                                    const [raceConditionTag] = await tx.select()
+                                        .from(tag)
+                                        .where(eq(tag.name, label.name))
+                                        .limit(1);
+                                    return raceConditionTag;
+                                }
+                            })
+                    );
+
+                    // Combine existing and new tags
+                    const allTags = [
+                        ...existingTags,
+                        ...newTags.filter((t): t is typeof tag.$inferSelect => t !== undefined)
+                    ];
 
                     // Create post-tag relationships with confidence scores
                     await Promise.all(
-                        tags.map(({ tag, confidence }) => 
-                            tx.insert(postTag)
+                        detectedLabels.map((label) => {
+                            const tag = allTags.find(t => t.name === label.name);
+                            if (!tag) return;
+
+                            return tx.insert(postTag)
                                 .values({
                                     postId: newPost.id,
                                     tagId: tag.id,
-                                    confidence: confidence.toString(),
-                                })
-                        )
+                                    confidence: label.confidence.toString(),
+                                });
+                        })
                     );
 
                     return {
                         post: { ...newPost, imageUrl: input.imageUrl },
-                        tags: tags.map(({ tag, confidence }) => ({
-                            ...tag,
-                            confidence,
+                        tags: detectedLabels.map(label => ({
+                            name: label.name,
+                            confidence: label.confidence,
                         })),
                     };
                 }

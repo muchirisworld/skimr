@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createPost } from "@/app/actions/post";
-
-const s3Client = new S3Client({
-    region: process.env.AWS_S3_REGION!,
-    credentials: {
-        accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY!,
-    },
-});
+import { s3Client } from "@/lib/aws-config";
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME!;
 
