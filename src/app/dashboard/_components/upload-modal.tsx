@@ -28,11 +28,11 @@ const UploadModal = () => {
     const maxFiles = 6;
 
     const [state, actions] = useFileUpload({
-        accept: "image/*",
+        accept: "image/jpeg,image/png,image/jpg",
         maxSize,
         multiple: true,
         maxFiles,
-    });
+            });
 
     const uploadImage = async () => {
         if (state.files.length === 0) {

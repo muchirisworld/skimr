@@ -8,8 +8,7 @@ export const post = pgTable("post", {
     userId: varchar("user_id", { length: 255 }).notNull().references(() => user.id),
     title: varchar("title", { length: 255 }).notNull(),
     description: text("description"),
-    imageUrl: varchar("image_url", { length: 255 }).notNull(),
-    s3Key: varchar("s3_key", { length: 255 }).notNull(),
+    s3Key: varchar("s3_key", { length: 1024 }).notNull(),
     ...lifecycleDates
 });
 
@@ -23,4 +22,4 @@ export const postRelations = relations(post,
 );
 
 export type Post = typeof post.$inferSelect;
-export type PostInsert = typeof post.$inferInsert; 
+export type PostInsert = typeof post.$inferInsert;

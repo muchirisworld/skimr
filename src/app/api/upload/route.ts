@@ -37,6 +37,16 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Validate image formats
+        const validImageTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        const invalidFiles = files.filter(file => !validImageTypes.includes(file.type));
+        if (invalidFiles.length > 0) {
+            return NextResponse.json(
+                { error: "Only JPEG and PNG images are supported" },
+                { status: 400 }
+            );
+        }
+
         // Process each file
         const uploadedFiles = await Promise.all(
             files.map(async (file) => {
@@ -50,6 +60,7 @@ export async function POST(req: NextRequest) {
                     ContentType: file.type,
                 });
 
+                // Wait for S3 upload to complete
                 await s3Client.send(command);
 
                 // Generate a signed URL for the uploaded file

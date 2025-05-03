@@ -15,7 +15,7 @@ export type CreatePostInput = {
     userId: string;
     title: string;
     description?: string;
-    imageUrl: string;
+    imageUrl: string;  // Used for temporary access, not stored
     s3Key: string;
 };
 
@@ -26,81 +26,114 @@ export type TagWithConfidence = {
 
 export const createPost = async (input: CreatePostInput) => {
     try {
-        // Use Rekognition to detect labels in the image
-        const detectLabelsCommand = new DetectLabelsCommand({
-            Image: {
-                S3Object: {
-                    Bucket: process.env.AWS_BUCKET_NAME!,
-                    Name: input.s3Key,
+        // Add a delay to allow S3 object to propagate (3 seconds)
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        try {
+            // Use Rekognition to detect labels in the image
+            const detectLabelsCommand = new DetectLabelsCommand({
+                Image: {
+                    S3Object: {
+                        Bucket: process.env.AWS_S3_BUCKET_NAME!,
+                        Name: input.s3Key,
+                    },
                 },
-            },
-            MaxLabels: 10,
-            MinConfidence: 70,
-        });
+                MaxLabels: 10,
+                MinConfidence: 70,
+            });
 
-        const rekognitionResponse = await rekognitionClient.send(detectLabelsCommand);
-        const detectedLabels: TagWithConfidence[] = rekognitionResponse.Labels?.map(label => ({
-            name: label.Name!,
-            confidence: label.Confidence!,
-        })) || [];
+            const rekognitionResponse = await rekognitionClient.send(detectLabelsCommand);
+            const detectedLabels: TagWithConfidence[] = rekognitionResponse.Labels?.map(label => ({
+                name: label.Name!,
+                confidence: label.Confidence!,
+            })) || [];
 
-        // Start a transaction
-        const result = await db.transaction(async (tx) => {
-            // Create the post
-            const [newPost] = await tx.insert(post)
-                .values(input)
-                .returning();
+            // Start a transaction
+            const result = await db.transaction(async (tx) => {
+                // Create the post first (without imageUrl)
+                const [newPost] = await tx.insert(post)
+                    .values({
+                        userId: input.userId,
+                        title: input.title,
+                        description: input.description,
+                        s3Key: input.s3Key,
+                    })
+                    .returning();
 
-            // Create or get existing tags
-            const tags = await Promise.all(
-                detectedLabels.map(async (label) => {
-                    const [existingTag] = await tx.select()
-                        .from(tag)
-                        .where(eq(tag.name, label.name))
-                        .limit(1);
+                if (detectedLabels.length > 0) {
+                    // Create or get existing tags
+                    const tags = await Promise.all(
+                        detectedLabels.map(async (label) => {
+                            const [existingTag] = await tx.select()
+                                .from(tag)
+                                .where(eq(tag.name, label.name))
+                                .limit(1);
 
-                    if (existingTag) {
-                        return {
-                            tag: existingTag,
-                            confidence: label.confidence,
-                        };
-                    }
+                            if (existingTag) {
+                                return {
+                                    tag: existingTag,
+                                    confidence: label.confidence,
+                                };
+                            }
 
-                    const [newTag] = await tx.insert(tag)
-                        .values({ name: label.name })
-                        .returning();
+                            const [newTag] = await tx.insert(tag)
+                                .values({ name: label.name })
+                                .returning();
+
+                            return {
+                                tag: newTag,
+                                confidence: label.confidence,
+                            };
+                        })
+                    );
+
+                    // Create post-tag relationships with confidence scores
+                    await Promise.all(
+                        tags.map(({ tag, confidence }) => 
+                            tx.insert(postTag)
+                                .values({
+                                    postId: newPost.id,
+                                    tagId: tag.id,
+                                    confidence: confidence.toString(),
+                                })
+                        )
+                    );
 
                     return {
-                        tag: newTag,
-                        confidence: label.confidence,
+                        post: { ...newPost, imageUrl: input.imageUrl }, // Add imageUrl back for the response
+                        tags: tags.map(({ tag, confidence }) => ({
+                            ...tag,
+                            confidence,
+                        })),
                     };
+                }
+
+                return {
+                    post: { ...newPost, imageUrl: input.imageUrl }, // Add imageUrl back for the response
+                    tags: [],
+                };
+            });
+
+            return result;
+        } catch (rekognitionError) {
+            console.error("Rekognition error:", rekognitionError);
+            // If Rekognition fails, still create the post but without tags
+            const [newPost] = await db.insert(post)
+                .values({
+                    userId: input.userId,
+                    title: input.title,
+                    description: input.description,
+                    s3Key: input.s3Key,
                 })
-            );
-
-            // Create post-tag relationships with confidence scores
-            await Promise.all(
-                tags.map(({ tag, confidence }) => 
-                    tx.insert(postTag)
-                        .values({
-                            postId: newPost.id,
-                            tagId: tag.id,
-                            confidence: confidence.toString(),
-                        })
-                )
-            );
-
+                .returning();
+            
             return {
-                post: newPost,
-                tags: tags.map(({ tag, confidence }) => ({
-                    ...tag,
-                    confidence,
-                })),
+                post: { ...newPost, imageUrl: input.imageUrl }, // Add imageUrl back for the response
+                tags: [],
             };
-        });
-
-        return result;
+        }
     } catch (error) {
         console.error("Error creating post:", error);
         throw error;
     }
-}; 
+};
