@@ -2,7 +2,7 @@
 
 import { db } from "@/drizzle";
 import { post, tag, postTag } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { detectImageLabels } from "@/lib/image-recognition";
 import { generateSignedUrl, deleteS3Object } from "@/lib/s3-operations";
 import type { CreatePostInput, PostWithDetails, TagWithConfidence } from "@/types/post";
@@ -31,7 +31,7 @@ export const createPost = async (input: CreatePostInput) => {
                     // First, get all existing tags in a single query
                     const existingTags = await tx.select()
                         .from(tag)
-                        .where(eq(tag.name, detectedLabels.map(l => l.name)));
+                        .where(inArray(tag.name, detectedLabels.map(l => l.name)));
 
                     const existingTagMap = new Map(
                         existingTags.map(t => [t.name, t])
