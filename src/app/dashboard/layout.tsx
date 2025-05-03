@@ -13,7 +13,7 @@ const DashboardLayout = ({
   return (
     <SidebarProvider>
         <AppSidebar />
-        <main>
+        <main className="flex-1">
             <Header />
             {children}
         </main>

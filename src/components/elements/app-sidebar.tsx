@@ -34,11 +34,6 @@ const items = [
         href: "/dashboard/collections",
         icon: FolderOpenIcon,
     },
-    {
-        name: "Settings",
-        href: "/dashboard/settings",
-        icon: GearIcon,
-    },
 ];
 
 const AppSidebar = () => {

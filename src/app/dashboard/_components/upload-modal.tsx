@@ -19,10 +19,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-const UploadModal = () => {
+interface UploadModalProps {
+    onUploadSuccess?: () => Promise<void>;
+}
+
+const UploadModal = ({ onUploadSuccess }: UploadModalProps) => {
     const [open, setOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+    const [isUploading, setIsUploading] = useState(false);
     const maxSizeMB = 5;
     const maxSize = maxSizeMB * 1024 * 1024; // 5MB default
     const maxFiles = 6;
@@ -32,7 +37,7 @@ const UploadModal = () => {
         maxSize,
         multiple: true,
         maxFiles,
-            });
+    });
 
     const uploadImage = async () => {
         if (state.files.length === 0) {
@@ -40,7 +45,7 @@ const UploadModal = () => {
             return;
         }
 
-        try {
+        const uploadPromise = async () => {
             const formData = new FormData();
             state.files.forEach((fileWrapper) => {
                 if (fileWrapper.file instanceof File) {
@@ -64,15 +69,30 @@ const UploadModal = () => {
                 throw new Error('Upload failed');
             }
 
-            const data = await response.json();
-            toast.success("Images uploaded successfully!");
-            actions.clearFiles();
-            setTitle("");
-            setDescription("");
-            setOpen(false);
-        } catch (error) {
-            console.error('Upload error:', error);
-            toast.error("Failed to upload files. Please try again.");
+            return response.json();
+        };
+
+        try {
+            setIsUploading(true);
+            await toast.promise(uploadPromise(), {
+                loading: 'Uploading images...',
+                success: async () => {
+                    actions.clearFiles();
+                    setTitle("");
+                    setDescription("");
+                    setOpen(false);
+                    if (onUploadSuccess) {
+                        await onUploadSuccess();
+                    }
+                    return "Images uploaded successfully!";
+                },
+                error: (error) => {
+                    console.error('Upload error:', error);
+                    return "Failed to upload files. Please try again.";
+                },
+            });
+        } finally {
+            setIsUploading(false);
         }
     }
 
@@ -81,6 +101,7 @@ const UploadModal = () => {
             <DialogTrigger asChild>
                 <Button
                     variant={"outline"}
+                    disabled={isUploading}
                 >
                     <UploadIcon className="mr-1" />
                     Upload
@@ -129,8 +150,9 @@ const UploadModal = () => {
                         </Button>
                         <Button
                             onClick={uploadImage}
+                            disabled={isUploading}
                         >
-                            Upload
+                            {isUploading ? "Uploading..." : "Upload"}
                         </Button>
                     </div>
                 </DialogFooter>

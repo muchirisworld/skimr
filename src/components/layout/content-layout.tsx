@@ -14,7 +14,7 @@ const ContentLayout: React.FC<ContentLayoutProps> = ({
     children
 }) => {
     return (
-        <div className="flex flex-col h-full w-full min-w-0">
+        <div className="flex flex-col h-full w-full">
             <div className="flex flex-col sm:flex-row sm:justify-between gap-4 px-6 py-4 border-b border-muted">
                 <div className="flex flex-col min-w-0">
                     <h1 className="text-2xl font-semibold truncate">{title}</h1>

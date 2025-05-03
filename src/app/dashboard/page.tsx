@@ -16,14 +16,15 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('all');
 
+    const refreshPosts = async () => {
+        setLoading(true);
+        const fetchedPosts = await getPosts();
+        setPosts(fetchedPosts);
+        setLoading(false);
+    };
+
     useEffect(() => {
-        const loadPosts = async () => {
-            setLoading(true);
-            const fetchedPosts = await getPosts();
-            setPosts(fetchedPosts);
-            setLoading(false);
-        };
-        loadPosts();
+        refreshPosts();
     }, []);
 
     const filteredPosts = posts.filter(post => {
@@ -42,7 +43,7 @@ const Dashboard = () => {
             title={"Explore"}
             subtitle={"Explore the latest content from your friends and the community."}
             headerAction={
-                <UploadModal />
+                <UploadModal onUploadSuccess={refreshPosts} />
             }
         >
             <div className="mb-6 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">

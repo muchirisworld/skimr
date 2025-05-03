@@ -87,7 +87,7 @@ export function ImageCard({ image, onView }: ImageCardProps) {
   return (
     <Card 
       className={cn(
-        "overflow-hidden group transition-all duration-200 hover:shadow-md",
+        "overflow-hidden group transition-all duration-200 p-0 hover:shadow-md",
         "border-transparent hover:border-border"
       )}
       onClick={onView}
