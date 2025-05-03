@@ -9,7 +9,7 @@ import { ImageGrid } from '@/components/elements/image-grid';
 import { getPosts } from '@/app/actions/post';
 import { useState } from 'react';
 import { useEffect } from 'react';
-import type { PostWithDetails } from '@/app/actions/post';
+import { PostWithDetails } from '@/types/post';
 
 const Dashboard = () => {
     const [posts, setPosts] = useState<PostWithDetails[]>([]);

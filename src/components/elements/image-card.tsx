@@ -25,10 +25,10 @@ import {
   Trash2
 } from "lucide-react";
 import { toast } from "sonner";
-import { PostWithDetails } from "@/app/actions/post";
 import { deletePost } from "@/app/actions/post";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { PostWithDetails } from "@/types/post";
 
 interface ImageCardProps {
   image: PostWithDetails;

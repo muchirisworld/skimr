@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { ImageCard } from "./image-card";
 import { ImageModal } from "./image-modal";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import type { PostWithDetails } from "@/app/actions/post";
+import { PostWithDetails } from "@/types/post";
 
 interface ImageData extends PostWithDetails {
   width?: number;

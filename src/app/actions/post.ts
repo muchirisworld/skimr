@@ -1,48 +1,11 @@
 "use server";
 
 import { db } from "@/drizzle";
-import { post, tag, postTag, type Post } from "@/drizzle/schema";
+import { post, tag, postTag } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
-import { RekognitionClient, DetectLabelsCommand } from "@aws-sdk/client-rekognition";
-import { S3Client, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-
-const rekognitionClient = new RekognitionClient({
-    region: process.env.AWS_REKOGNITION_REGION!,
-    credentials: {
-        accessKeyId: process.env.AWS_REKOGNITION_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_REKOGNITION_SECRET_ACCESS_KEY!,
-    },
-});
-
-const s3Client = new S3Client({
-    region: process.env.AWS_S3_REGION!,
-    credentials: {
-        accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY!,
-    },
-});
-
-export type CreatePostInput = {
-    userId: string;
-    title: string;
-    description?: string;
-    imageUrl: string;  // Used for temporary access, not stored
-    s3Key: string;
-};
-
-export type TagWithConfidence = {
-    name: string;
-    confidence: number;
-};
-
-export type PostWithDetails = Post & {
-    imageUrl: string;
-    tags: {
-        name: string;
-        confidence: number;
-    }[];
-};
+import { detectImageLabels } from "@/lib/image-recognition";
+import { generateSignedUrl, deleteS3Object } from "@/lib/s3-operations";
+import type { CreatePostInput, PostWithDetails, TagWithConfidence } from "@/types/post";
 
 export const createPost = async (input: CreatePostInput) => {
     try {
@@ -50,23 +13,7 @@ export const createPost = async (input: CreatePostInput) => {
         await new Promise(resolve => setTimeout(resolve, 3000));
 
         try {
-            // Use Rekognition to detect labels in the image
-            const detectLabelsCommand = new DetectLabelsCommand({
-                Image: {
-                    S3Object: {
-                        Bucket: process.env.AWS_S3_BUCKET_NAME!,
-                        Name: input.s3Key,
-                    },
-                },
-                MaxLabels: 10,
-                MinConfidence: 70,
-            });
-
-            const rekognitionResponse = await rekognitionClient.send(detectLabelsCommand);
-            const detectedLabels: TagWithConfidence[] = rekognitionResponse.Labels?.map(label => ({
-                name: label.Name!,
-                confidence: label.Confidence!,
-            })) || [];
+            const detectedLabels = await detectImageLabels(input.s3Key);
 
             // Start a transaction
             const result = await db.transaction(async (tx) => {
@@ -120,7 +67,7 @@ export const createPost = async (input: CreatePostInput) => {
                     );
 
                     return {
-                        post: { ...newPost, imageUrl: input.imageUrl }, // Add imageUrl back for the response
+                        post: { ...newPost, imageUrl: input.imageUrl },
                         tags: tags.map(({ tag, confidence }) => ({
                             ...tag,
                             confidence,
@@ -129,15 +76,15 @@ export const createPost = async (input: CreatePostInput) => {
                 }
 
                 return {
-                    post: { ...newPost, imageUrl: input.imageUrl }, // Add imageUrl back for the response
+                    post: { ...newPost, imageUrl: input.imageUrl },
                     tags: [],
                 };
             });
 
             return result;
-        } catch (rekognitionError) {
-            console.error("Rekognition error:", rekognitionError);
-            // If Rekognition fails, still create the post but without tags
+        } catch (error) {
+            console.error("Error creating post with tags:", error);
+            // If tag processing fails, still create the post but without tags
             const [newPost] = await db.insert(post)
                 .values({
                     userId: input.userId,
@@ -148,7 +95,7 @@ export const createPost = async (input: CreatePostInput) => {
                 .returning();
             
             return {
-                post: { ...newPost, imageUrl: input.imageUrl }, // Add imageUrl back for the response
+                post: { ...newPost, imageUrl: input.imageUrl },
                 tags: [],
             };
         }
@@ -180,12 +127,8 @@ export const getPosts = async (userId?: string): Promise<PostWithDetails[]> => {
 
         for (const row of results) {
             if (!postsMap.has(row.post.id)) {
-                const command = new GetObjectCommand({
-                    Bucket: process.env.AWS_S3_BUCKET_NAME!,
-                    Key: row.post.s3Key,
-                });
-                const imageUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-
+                const imageUrl = await generateSignedUrl(row.post.s3Key);
+                
                 postsMap.set(row.post.id, {
                     ...row.post,
                     imageUrl,
@@ -228,11 +171,7 @@ export const getPost = async (postId: string): Promise<PostWithDetails | null> =
             return null;
         }
 
-        const command = new GetObjectCommand({
-            Bucket: process.env.AWS_S3_BUCKET_NAME!,
-            Key: results[0].post.s3Key,
-        });
-        const imageUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        const imageUrl = await generateSignedUrl(results[0].post.s3Key);
 
         const postWithDetails: PostWithDetails = {
             ...results[0].post,
@@ -260,10 +199,7 @@ export const deletePost = async (postId: string): Promise<void> => {
         }
 
         // Delete the image from S3
-        await s3Client.send(new DeleteObjectCommand({
-            Bucket: process.env.AWS_S3_BUCKET_NAME!,
-            Key: postToDelete.s3Key,
-        }));
+        await deleteS3Object(postToDelete.s3Key);
 
         // Delete the post and its relationships from the database
         await db.transaction(async (tx) => {

@@ -20,12 +20,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { PostWithDetails } from "@/app/actions/post";
 import { useTransition } from "react";
 import { deletePost } from "@/app/actions/post";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import { PostWithDetails } from "@/types/post";
 
 interface ImageModalProps {
   image: PostWithDetails;
