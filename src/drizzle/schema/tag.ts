@@ -8,8 +8,8 @@ export const tag = pgTable("tag", {
 });
 
 export const postTag = pgTable("post_tag", {
-    postId: uuid("post_id").notNull().references(() => post.id),
-    tagId: uuid("tag_id").notNull().references(() => tag.id),
+    postId: uuid("post_id").notNull().references(() => post.id, { onDelete: 'cascade' }),
+    tagId: uuid("tag_id").notNull().references(() => tag.id, { onDelete: 'cascade' }),
     confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(),
 });
 
@@ -29,4 +29,4 @@ export const postTagRelations = relations(postTag,
 export type Tag = typeof tag.$inferSelect;
 export type TagInsert = typeof tag.$inferInsert;
 export type PostTag = typeof postTag.$inferSelect;
-export type PostTagInsert = typeof postTag.$inferInsert; 
+export type PostTagInsert = typeof postTag.$inferInsert;

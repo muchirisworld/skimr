@@ -9,6 +9,6 @@ export default defineConfig({
     verbose: true,
     dbCredentials: {
         url: process.env.DATABASE_URL!,
-        ssl: false
+        ssl: true
     }
 });
