@@ -43,42 +43,53 @@ export async function POST(req: NextRequest) {
         // Process each file
         const uploadedFiles = await Promise.all(
             files.map(async (file) => {
-                const fileBuffer = await file.arrayBuffer();
-                const key = `${user.id}/${Date.now()}-${file.name}`;
+                try {
+                    const fileBuffer = await file.arrayBuffer();
+                    const key = `${user.id}/${Date.now()}-${file.name}`;
 
-                const command = new PutObjectCommand({
-                    Bucket: BUCKET_NAME,
-                    Key: key,
-                    Body: Buffer.from(fileBuffer),
-                    ContentType: file.type,
-                });
+                    const command = new PutObjectCommand({
+                        Bucket: BUCKET_NAME,
+                        Key: key,
+                        Body: Buffer.from(fileBuffer),
+                        ContentType: file.type,
+                    });
 
-                // Wait for S3 upload to complete
-                await s3Client.send(command);
+                    // Upload to S3
+                    await s3Client.send(command);
 
-                // Generate a signed URL for the uploaded file
-                const signedUrl = await getSignedUrl(s3Client, command, {
-                    expiresIn: 3600, // URL expires in 1 hour
-                });
+                    // Generate signed URL
+                    const signedUrl = await getSignedUrl(s3Client, command, {
+                        expiresIn: 3600,
+                    });
 
-                // Create post with tags
-                const { post, tags } = await createPost({
-                    userId: user.id,
-                    title: title || file.name,
-                    description,
-                    imageUrl: signedUrl,
-                    s3Key: key,
-                });
+                    // Create post with tags
+                    const { post, tags } = await createPost({
+                        userId: user.id,
+                        title: title || file.name,
+                        description,
+                        imageUrl: signedUrl,
+                        s3Key: key,
+                    });
 
-                return {
-                    name: file.name,
-                    type: file.type,
-                    size: file.size,
-                    url: signedUrl,
-                    key: key,
-                    post,
-                    tags,
-                };
+                    return {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        url: signedUrl,
+                        key: key,
+                        post,
+                        tags,
+                    };
+                } catch (error: any) {
+                    // Log the specific error for debugging
+                    console.error("Error processing file:", file.name, error);
+                    
+                    if (error.code === 'ENOTFOUND') {
+                        throw new Error('Database connection failed. Please try again.');
+                    }
+                    
+                    throw error;
+                }
             })
         );
 
@@ -86,10 +97,19 @@ export async function POST(req: NextRequest) {
             message: "Files uploaded successfully",
             files: uploadedFiles
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Upload error:", error);
+        
+        // Handle specific error types
+        if (error.code === 'ENOTFOUND') {
+            return NextResponse.json(
+                { error: "Database connection failed. Please try again." },
+                { status: 503 }
+            );
+        }
+        
         return NextResponse.json(
-            { error: "Failed to upload files" },
+            { error: error.message || "Failed to upload files" },
             { status: 500 }
         );
     }
